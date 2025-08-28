@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import http.client
+import sqlite3
 from flask_sqlalchemy import SQLAlchemy
 
 load_dotenv()
@@ -11,21 +12,115 @@ load_dotenv()
 # conn = http.client.HTTPSConnection("url")
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///datastorage.db'
 db = SQLAlchemy(app)
 
-class Data(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    info = db.Column(db.String(200))
+# class Data(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     info = db.Column(db.String(200))
 
     
-    def __repr__(self):
-        return f"<Data id={self.id} info={self.info}>"
+#     def __repr__(self):
+#         return f"<Data id={self.id} info={self.info}>"
+def get_db_connection():
+    conn = sqlite3.connect('datastorage.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+class DB(db.Model):
+    location_code = db.Column(db.String(200), primary_key=True)
+    parent = db.Column(db.String(200))
+    type_of_storage = db.Column(db.String(200))
+
+    
+    # def __repr__(self):
+        # return f"<Data id={self.id} info={self.info}>"
 
 with app.app_context():
     db.create_all()
 
 
+# warehouse = {}
+
+def addData(location_code, parent):
+    if parent == None:
+        new_data = DB(location_code = location_code, parent = None, type_of_storage = "warehouse")
+    else:
+        new_data = DB(location_code = location_code, parent = parent, type_of_storage = "storage")
+    db.session.add(new_data)
+    db.session.commit()
+    
+
+@app.route("/api/create_location", methods=["POST"])
+def create_location():
+    location_code = request.json.get("location_code")
+    parent_location_code = request.json.get("parent_location_code")
+    addData(location_code, parent_location_code)
+    if location_code == None:
+        
+        return jsonify({"success": False,
+                        "message": "Location not created",
+                        })
+    
+    if parent_location_code == None:
+        # warehouse[location_code] = {}
+        return jsonify({"success": True,
+                        "message": "Location created successfully",
+                        "data": {
+                            "location_code": location_code,
+                            "parent_location_code": None,
+                            "type": "warehouse"
+                        }})
+    else:
+        return jsonify({"success": True,
+                        "message": "Location created successfully",
+                        "data": {
+                            "location_code": location_code,
+                            "parent_location_code": parent_location_code,
+                            "type": "storage"
+                        }})
+
+# def query_db(query, args=(), one=False):
+#     cur = DB.execute(query, args)
+#     rv = cur.fetchall()
+#     cur.close()
+#     return (rv[0] if rv else None) if one else rv
+
+
+def fetchChilds(location_code):
+    # conn = get_db_connection()
+    # posts = conn.execute('SELECT * FROM posts').fetchall()
+
+    
+    childs = DB.query.filter_by(parent=location_code).all()
+    # conn = DB()
+    # cursor = conn.cursor()
+    # cursor.execute("SELECT * FROM your_table")
+    # rows = cursor.fetchall()
+
+    print(type(childs[0]))
+    return childs
+
+@app.route("/api/warehouse/tree", methods=["GET"])
+def getTree():
+    warehouse_code = request.args.get("warehouse_code")
+    childs = fetchChilds(warehouse_code)
+    tree = []
+    
+    
+    for child in childs:
+        tree.append({"location_code": child["location_code"], "type": child["type_of_storage"]})
+    
+    return jsonify({"location_code": warehouse_code,
+                   "type": "warehouse",
+                   "childs": tree})
+    
+    # return jsonify({"location_code": warehouse_code,
+    #                "type": "warehouse",
+    #                "childs": tree})
+    
+    
 # def addData(info):
 #     new_data = Data(info=info)
 #     db.session.add(new_data)
