@@ -1,17 +1,36 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import http.client
+from flask_sqlalchemy import SQLAlchemy
 
-conn = http.client.HTTPSConnection("url")
+load_dotenv()
+
+
+# conn = http.client.HTTPSConnection("url")
 
 app = Flask(__name__)
+# app.config['SQL_ALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+# db = SQLAlchemy(app)
+
+# class Data(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     info = db.Column(db.String(200))
+
+    
+#     def __repr__(self):
+#         return f"<Data id={self.id} info={self.info}>"
+
+
+
+
 
 API_KEY = os.getenv("API_KEY", "default_api_key")
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"message": "Flask Minimal Boilerplate is running!"})
+    return render_template('index.html')
+    # return jsonify({"message": "Flask Minimal Boilerplate is running!"})
 
 
 @app.route("/public", methods=["GET"])
