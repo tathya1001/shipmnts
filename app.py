@@ -32,6 +32,7 @@ class DB(db.Model):
     location_code = db.Column(db.String(200), primary_key=True)
     parent = db.Column(db.String(200))
     type_of_storage = db.Column(db.String(200))
+    qty = db.Column(db.Integer)
 
     
     # def __repr__(self):
@@ -43,11 +44,11 @@ with app.app_context():
 
 # warehouse = {}
 
-def addData(location_code, parent):
+def addData(location_code, parent, qty=50):
     if parent == None:
-        new_data = DB(location_code = location_code, parent = None, type_of_storage = "warehouse")
+        new_data = DB(location_code = location_code, parent = None, type_of_storage = "warehouse", qty=qty)
     else:
-        new_data = DB(location_code = location_code, parent = parent, type_of_storage = "storage")
+        new_data = DB(location_code = location_code, parent = parent, type_of_storage = "storage", qty=qty)
     db.session.add(new_data)
     db.session.commit()
     
@@ -94,12 +95,12 @@ def fetchChilds(location_code):
 
     
     childs = DB.query.filter_by(parent=location_code).all()
-    # conn = DB()
-    # cursor = conn.cursor()
-    # cursor.execute("SELECT * FROM your_table")
-    # rows = cursor.fetchall()
-
-    print(type(childs[0]))
+    # for child in childs:
+    #     row = db.session.get_one(DB, location_code = child)
+    #     print(row)
+        
+    # result_child = [child.location_code for child in childs]
+    # print(result_child)
     return childs
 
 @app.route("/api/warehouse/tree", methods=["GET"])
@@ -110,15 +111,64 @@ def getTree():
     
     
     for child in childs:
-        tree.append({"location_code": child["location_code"], "type": child["type_of_storage"]})
+        tree.append({"location_code": child.location_code, "type": child.type_of_storage, "childs":[]})
     
     return jsonify({"location_code": warehouse_code,
                    "type": "warehouse",
                    "childs": tree})
     
-    # return jsonify({"location_code": warehouse_code,
-    #                "type": "warehouse",
-    #                "childs": tree})
+
+def findParent(location_code):
+    row = DB.query.filter_by(location_code = location_code).first()
+    
+    return row.parent
+
+@app.route("/api/transaction/receipt", methods=["POST"])
+def transactionReceipt():
+    # req = request.json()
+    # print(request.json())
+    warehouse_code = request.json.get("warehouse_code")
+    products = request.json.get("products")
+    print(products)
+    
+    dic = []
+    
+    for product in products:
+        if findParent(product["location_code"]) == warehouse_code:
+            dic.append({"success": True,
+                   "message": "Products added successfully"})
+        else:
+            dic.append({"success": False,
+                   "message": "Location Doesn't belong to a specific warehouse"})
+
+    return jsonify(dic)
+    
+    
+    
+
+# def findParent(location_code):
+#     row = DB.query.filter_by(location_code = location_code).first()
+    
+#     return row.parent
+
+@app.route("/api/transaction/delivery", methods=["POST"])
+def transactionDelivery():
+    warehouse_code = request.json.get("warehouse_code")
+    products = request.json.get("products")
+    print(products)
+    
+    dic = []
+    
+    for product in products:
+        if findParent(product["location_code"]) == warehouse_code:
+            dic.append({"success": True,
+                   "message": "Product delivered successfully"})
+        else:
+            dic.append({"success": False,
+                   "message": "Insufficient Qty at given Location"})
+
+    return jsonify(dic)
+    
     
     
 # def addData(info):
