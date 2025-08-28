@@ -12,7 +12,7 @@ load_dotenv()
 # conn = http.client.HTTPSConnection("url")
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///datastorage.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///datastorage2.db'
 db = SQLAlchemy(app)
 
 # class Data(db.Model):
@@ -95,12 +95,6 @@ def fetchChilds(location_code):
 
     
     childs = DB.query.filter_by(parent=location_code).all()
-    # for child in childs:
-    #     row = db.session.get_one(DB, location_code = child)
-    #     print(row)
-        
-    # result_child = [child.location_code for child in childs]
-    # print(result_child)
     return childs
 
 @app.route("/api/warehouse/tree", methods=["GET"])
@@ -146,10 +140,10 @@ def transactionReceipt():
     
     
 
-# def findParent(location_code):
-#     row = DB.query.filter_by(location_code = location_code).first()
+def findQty(location_code):
+    row = DB.query.filter_by(location_code = location_code).first()
     
-#     return row.parent
+    return row.qty
 
 @app.route("/api/transaction/delivery", methods=["POST"])
 def transactionDelivery():
@@ -160,7 +154,7 @@ def transactionDelivery():
     dic = []
     
     for product in products:
-        if findParent(product["location_code"]) == warehouse_code:
+        if findQty(product["location_code"]) >= product["qty"]:
             dic.append({"success": True,
                    "message": "Product delivered successfully"})
         else:
